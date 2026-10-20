@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="1200" height="420" role="img" aria-label="How who-am-ai works: settled chats become your messages, annotated into observations kept in a ledger; your edits to me.md are diffed; a rewrite produces profile items, rendered to me.md with a changelog">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3e635"/>
+    </marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#18181b"/>
+      <stop offset="1" stop-color="#27272a"/>
+    </linearGradient>
+  </defs>
+  <style>
+    text { font-family: 'Segoe UI', -apple-system, Helvetica, Arial, sans-serif; }
+    .title { font-size: 17px; font-weight: 650; fill: #fafafa; }
+    .sub { font-size: 12.5px; fill: #a1a1aa; }
+    .lane { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; fill: #a1a1aa; }
+    .plain { fill: #27272a; stroke: #71717a; stroke-width: 1.8; }
+    .llm { fill: #27272a; stroke: #a3e635; stroke-width: 2.4; }
+    .out { fill: #18181b; stroke: #a3e635; stroke-width: 2.4; }
+    .flow { stroke: #a3e635; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+    .note { font-size: 12px; fill: #a3e635; font-style: italic; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+  <rect width="1200" height="420" rx="14" fill="url(#bg)"/>
+
+  <!-- row 1: read and understand -->
+  <rect x="40" y="62" width="220" height="86" rx="12" class="plain"/>
+  <text x="62" y="96" class="title">Settled chats</text>
+  <text x="62" y="120" class="sub">Assistant transcripts,</text>
+  <text x="62" y="138" class="sub">idle for a few minutes</text>
+
+  <rect x="330" y="62" width="220" height="86" rx="12" class="plain"/>
+  <text x="352" y="96" class="title">Your messages</text>
+  <text x="352" y="120" class="sub">Only yours, plus the reply</text>
+  <text x="352" y="138" class="sub">you reacted to, as context</text>
+
+  <rect x="640" y="62" width="220" height="86" rx="12" class="llm"/>
+  <text x="662" y="96" class="title">Annotate</text>
+  <text x="662" y="120" class="sub">An LLM notes the preferences</text>
+  <text x="662" y="138" class="sub">with your literal quote</text>
+
+  <rect x="940" y="62" width="220" height="86" rx="12" class="plain"/>
+  <text x="962" y="96" class="title">Ledger</text>
+  <text x="962" y="120" class="sub">Every observation kept</text>
+  <text x="962" y="138" class="sub">as evidence</text>
+
+  <!-- row 2: your edits and the rewrite -->
+  <rect x="40" y="184" width="220" height="86" rx="12" class="plain"/>
+  <text x="62" y="218" class="title">Your edits to me.md</text>
+  <text x="62" y="242" class="sub">Diffed against the last</text>
+  <text x="62" y="260" class="sub">version the tool wrote</text>
+
+  <rect x="640" y="184" width="220" height="86" rx="12" class="llm"/>
+  <text x="662" y="218" class="title">Rewrite</text>
+  <text x="662" y="242" class="sub">An LLM consolidates and</text>
+  <text x="662" y="260" class="sub">dedupes; latest one wins</text>
+
+  <!-- row 3: deliver -->
+  <rect x="330" y="316" width="220" height="70" rx="12" class="plain"/>
+  <text x="352" y="346" class="title">Changelog and history</text>
+  <text x="352" y="368" class="sub">What changed, and why</text>
+
+  <rect x="640" y="316" width="220" height="70" rx="12" class="plain"/>
+  <text x="662" y="346" class="title">Render</text>
+  <text x="662" y="368" class="sub">Code applies the word cap</text>
+
+  <rect x="940" y="316" width="220" height="70" rx="12" class="out"/>
+  <text x="962" y="346" class="title mono" style="font-size:16px">me.md</text>
+  <text x="962" y="368" class="sub">Loaded by your assistant</text>
+
+  <!-- flows -->
+  <path class="flow" d="M260 105 H328"/>
+  <path class="flow" d="M550 105 H638"/>
+  <path class="flow" d="M860 105 H938"/>
+  <path class="flow" d="M1050 148 V166 H750 V182"/>
+  <path class="flow" d="M260 227 H638"/>
+  <text x="330" y="217" class="note">Your edits always win</text>
+  <path class="flow" d="M750 270 V314"/>
+  <path class="flow" d="M640 351 H552"/>
+  <path class="flow" d="M860 351 H938"/>
+</svg>

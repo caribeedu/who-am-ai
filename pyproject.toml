@@ -1,0 +1,41 @@
+[project]
+name = "who-am-ai"
+version = "0.1.0"
+description = "Learns how its owner wants AI assistants to work, from the owner's own messages, and keeps a short profile that the assistant loads in every conversation."
+requires-python = ">=3.13,<3.15"
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+authors = [{ name = "Edu Caribé" }]
+keywords = ["claude-code", "claude", "llm", "personalization", "user-preferences", "ai-assistant", "memory"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "anthropic>=0.70",
+    "keyring>=25",
+]
+
+[project.urls]
+Homepage = "https://github.com/caribeedu/who-am-ai"
+Documentation = "https://github.com/caribeedu/who-am-ai/tree/main/docs"
+Issues = "https://github.com/caribeedu/who-am-ai/issues"
+
+[project.scripts]
+whoamai = "who_am_ai.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/who_am_ai"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
