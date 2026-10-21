@@ -13,7 +13,7 @@
 **Learns how you want AI assistants to work, from your own messages, and keeps a short profile that your assistants load in every conversation.**
 
 > [!note]
-> **Background:** who-am-ai is the lean successor of [Pythia](https://github.com/caribeedu/pythia), a broader knowledge oracle. Measuring Pythia showed that the clearest value came from its cheapest part: learning your preferences from your own messages. who-am-ai does only that. See [docs/decisions.md](docs/decisions.md).
+> **Background:** who-am-ai is a leaner alternative to [Pythia](https://github.com/caribeedu/pythia), a broader knowledge oracle. Measuring Pythia showed that the clearest value came from its cheapest part: learning your preferences from your own messages. who-am-ai does only that. See [docs/decisions.md](docs/decisions.md).
 
 Every new session starts blank, so you keep repeating the same things: reply in English, keep it short, do not paraphrase my request, no emojis in commits. who-am-ai reads what you say to your assistants, notes the preferences those messages reveal, and maintains a profile of about 600 words that the assistant loads into every conversation. You say it once; every assistant knows it from then on.
 

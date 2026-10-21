@@ -2,7 +2,7 @@
 
 ## Why this project exists
 
-who-am-ai is what remained after [Pythia](https://github.com/caribeedu/pythia), its predecessor. Pythia extracted claims from many sources (chats, pull requests, Slack, Confluence), kept them consistent over time and served them on demand. It was costly to maintain, and in testing it did not beat a plain text search over the raw sources on direct questions (see its [measurement results](https://github.com/caribeedu/pythia/blob/main/docs/measuring-value.md)). What clearly helped, at almost no cost, was something much smaller: the user's own preferences about how an assistant should work, learned from their own messages and delivered in every conversation.
+who-am-ai is a leaner alternative to [Pythia](https://github.com/caribeedu/pythia), and grew out of measuring it. Pythia extracted claims from many sources (chats, pull requests, Slack, Confluence), kept them consistent over time and served them on demand. It was costly to maintain, and in testing it did not beat a plain text search over the raw sources on direct questions (see its [measurement results](https://github.com/caribeedu/pythia/blob/main/docs/measuring-value.md)). What clearly helped, at almost no cost, was something much smaller: the user's own preferences about how an assistant should work, learned from their own messages and delivered in every conversation.
 
 who-am-ai does only that. It trades breadth for a result that can be verified: the user repeats themselves less, and can read, edit and veto everything the tool believes about them.
 
