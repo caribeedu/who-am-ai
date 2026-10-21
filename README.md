@@ -12,13 +12,10 @@
 
 **Learns how you want AI assistants to work, from your own messages, and keeps a short profile that your assistants load in every conversation.**
 
-> [!note]
-> **Background:** who-am-ai is a leaner alternative to [Pythia](https://github.com/caribeedu/pythia), a broader knowledge oracle. Measuring Pythia showed that the clearest value came from its cheapest part: learning your preferences from your own messages. who-am-ai does only that. See [docs/decisions.md](docs/decisions.md).
-
 Every new session starts blank, so you keep repeating the same things: reply in English, keep it short, do not paraphrase my request, no emojis in commits. who-am-ai reads what you say to your assistants, notes the preferences those messages reveal, and maintains a profile of about 600 words that the assistant loads into every conversation. You say it once; every assistant knows it from then on.
 
 > [!IMPORTANT]
-> **Supported today:** [Claude Code](https://claude.com/claude-code) as the assistant (its transcripts are the input, and the profile is imported through `CLAUDE.md`) and macOS as the platform (scheduling with a LaunchAgent, secrets in the Keychain). The design does not depend on either; other assistants and platforms are welcome additions.
+> **Background:** who-am-ai is a leaner alternative to [Pythia](https://github.com/caribeedu/pythia), a broader knowledge oracle. Measuring Pythia showed that the clearest value came from its cheapest part: learning your preferences from your own messages. who-am-ai does only [that](docs/decisions.md).
 
 ## Features
 
@@ -29,6 +26,9 @@ Every new session starts blank, so you keep repeating the same things: reply in 
 - **Small and predictable.** The profile has a word cap, enforced by code by priority: what you wrote, then what you repeated, then the most recent. There is no daemon, no Docker and no web server.
 - **Bounded cost.** A monthly spend cap stops the LLM calls. A typical user spends a few dollars per month.
 - **No LLM, no guessing.** Judgment is always done by an LLM; there are no heuristic fallbacks. Without a key or at the cap, runs stop and say so.
+
+> [!NOTE]
+> **Supported today:** [Claude Code](https://claude.com/claude-code) as the assistant (its transcripts are the input, and the profile is imported through `CLAUDE.md`) and macOS as the platform (scheduling with a LaunchAgent, secrets in the Keychain). The design does not depend on either; other assistants and platforms are welcome additions.
 
 ## How it works
 
