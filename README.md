@@ -42,23 +42,27 @@ Once a day, `whoamai run` processes the conversations that have settled: it read
 
 **Requirements:** Python 3.13 or 3.14, [uv](https://docs.astral.sh/uv/) and an [Anthropic API key](https://console.anthropic.com/) for the LLM steps. Today the assistant is Claude Code and the platform is macOS (scheduling with a LaunchAgent, the key in the Keychain); on other systems you can run `whoamai run` yourself.
 
+Install it from PyPI:
+
 ```bash
-uv sync
+uv tool install who-am-ai
 ```
 
 ```bash
-uv run whoamai key
+whoamai key
 ```
 
 ```bash
-uv run whoamai install
+whoamai install
 ```
 
 `key` stores the API key in the Keychain (service `who-am-ai`). `install` schedules `whoamai run` once a day at 12:00 and makes Claude Code load the profile by adding `@~/.claude/me.md` to `~/.claude/CLAUDE.md`. To see the first result right away:
 
 ```bash
-uv run whoamai run
+whoamai run
 ```
+
+To run it from a source checkout instead, use `uv sync` and prefix the commands with `uv run`.
 
 ### Commands
 
