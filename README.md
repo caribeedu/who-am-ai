@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="who-am-ai: let your AI know how you like things done" width="100%">
+  <img src="https://raw.githubusercontent.com/caribeedu/who-am-ai/main/assets/banner.svg" alt="who-am-ai: let your AI know how you like things done" width="100%">
 </p>
 
 <p align="center">
   <a href="https://github.com/caribeedu/who-am-ai/actions/workflows/tests.yml"><img src="https://github.com/caribeedu/who-am-ai/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
   <img src="https://img.shields.io/badge/python-3.13%20%7C%203.14-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.13 | 3.14">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a3e635?style=flat-square" alt="MIT"></a>
+  <a href="https://github.com/caribeedu/who-am-ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-a3e635?style=flat-square" alt="MIT"></a>
 </p>
 
 # who-am-ai
@@ -15,7 +15,7 @@
 Every new session starts blank, so you keep repeating the same things: reply in English, keep it short, do not paraphrase my request, no emojis in commits. who-am-ai reads what you say to your assistants, notes the preferences those messages reveal, and maintains a profile of about 600 words that the assistant loads into every conversation. You say it once; every assistant knows it from then on.
 
 > [!IMPORTANT]
-> **Background:** who-am-ai is a leaner alternative to [Pythia](https://github.com/caribeedu/pythia), a broader knowledge oracle. Measuring Pythia showed that the clearest value came from its cheapest part: learning your preferences from your own messages. who-am-ai does only [that](docs/decisions.md).
+> **Background:** who-am-ai is a leaner alternative to [Pythia](https://github.com/caribeedu/pythia), a broader knowledge oracle. Measuring Pythia showed that the clearest value came from its cheapest part: learning your preferences from your own messages. who-am-ai does only [that](https://github.com/caribeedu/who-am-ai/blob/main/docs/decisions.md).
 
 ## Features
 
@@ -33,10 +33,10 @@ Every new session starts blank, so you keep repeating the same things: reply in 
 ## How it works
 
 <p align="center">
-  <img src="assets/how-it-works.svg" alt="How who-am-ai works: settled chats become your messages, annotated into observations kept in a ledger; your edits to me.md are diffed; a rewrite produces profile items, rendered to me.md with a changelog" width="100%">
+  <img src="https://raw.githubusercontent.com/caribeedu/who-am-ai/main/assets/how-it-works.svg" alt="How who-am-ai works: settled chats become your messages, annotated into observations kept in a ledger; your edits to me.md are diffed; a rewrite produces profile items, rendered to me.md with a changelog" width="100%">
 </p>
 
-Once a day, `whoamai run` processes the conversations that have settled: it reads your new messages, asks an LLM to annotate the preferences they reveal (each with your literal quote), folds in your edits to `me.md`, asks an LLM to rewrite the item list (merging duplicates, the latest preference wins, you win over everything) and renders the result with the word cap applied. Details: [docs/design.md](docs/design.md).
+Once a day, `whoamai run` processes the conversations that have settled: it reads your new messages, asks an LLM to annotate the preferences they reveal (each with your literal quote), folds in your edits to `me.md`, asks an LLM to rewrite the item list (merging duplicates, the latest preference wins, you win over everything) and renders the result with the word cap applied. Details: [docs/design.md](https://github.com/caribeedu/who-am-ai/blob/main/docs/design.md).
 
 ## Getting started
 
@@ -95,13 +95,13 @@ uv run python -m pytest -q
 
 | Document | About |
 |---|---|
-| [Design](docs/design.md) | The pipeline, each piece, the runtime and the CLI |
-| [Decisions](docs/decisions.md) | The numbered decisions (D1–D11) and the reasoning behind them |
+| [Design](https://github.com/caribeedu/who-am-ai/blob/main/docs/design.md) | The pipeline, each piece, the runtime and the CLI |
+| [Decisions](https://github.com/caribeedu/who-am-ai/blob/main/docs/decisions.md) | The numbered decisions (D1–D11) and the reasoning behind them |
 
 ## Privacy and security
 
-who-am-ai reads your assistant transcripts (today, Claude Code's) locally and sends your messages, and the tail of the replies they react to, to the Anthropic API to annotate preferences. Nothing else leaves your machine. State is kept in `~/.who-am-ai/`, and the API key in the Keychain. See [SECURITY.md](SECURITY.md) to report a vulnerability and [CONTRIBUTING.md](CONTRIBUTING.md) to contribute.
+who-am-ai reads your assistant transcripts (today, Claude Code's) locally and sends your messages, and the tail of the replies they react to, to the Anthropic API to annotate preferences. Nothing else leaves your machine. State is kept in `~/.who-am-ai/`, and the API key in the Keychain. See [SECURITY.md](https://github.com/caribeedu/who-am-ai/blob/main/SECURITY.md) to report a vulnerability and [CONTRIBUTING.md](https://github.com/caribeedu/who-am-ai/blob/main/CONTRIBUTING.md) to contribute.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/caribeedu/who-am-ai/blob/main/LICENSE)

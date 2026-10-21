@@ -1,6 +1,6 @@
 [project]
 name = "who-am-ai"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Learns how its owner wants AI assistants to work, from the owner's own messages, and keeps a short profile that the assistant loads in every conversation."
 requires-python = ">=3.13,<3.15"
 license = "MIT"
@@ -9,7 +9,11 @@ readme = "README.md"
 authors = [{ name = "Edu Caribé" }]
 keywords = ["claude-code", "claude", "llm", "personalization", "user-preferences", "ai-assistant", "memory"]
 classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -33,6 +37,9 @@ dev = ["pytest>=8"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/who_am_ai/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/who_am_ai"]

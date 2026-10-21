@@ -11,6 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from . import __version__
 from .config import READ_MODES, Config
 from .pipeline import Runner
 from .store import Store, now
@@ -175,6 +176,7 @@ def cmd_key(cfg: Config, args) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="whoamai", description="Keeps a short profile of how you want AI assistants to work.")
+    p.add_argument("--version", action="version", version=f"whoamai {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
     for name, fn in (("run", cmd_run), ("status", cmd_status), ("install", cmd_install),
                      ("uninstall", cmd_uninstall)):
