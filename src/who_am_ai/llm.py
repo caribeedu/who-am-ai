@@ -47,7 +47,7 @@ class LLM:
         if self._client is None:
             key = api_key()
             if not key:
-                raise LLMStopped("no Anthropic API key in the Keychain (run `whoamai key`)")
+                raise LLMStopped("no Anthropic API key in the system keychain (run `whoamai key`)")
             import anthropic
             self._client = anthropic.Anthropic(api_key=key)
         return self._client

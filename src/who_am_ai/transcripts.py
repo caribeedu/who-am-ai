@@ -89,7 +89,7 @@ def discover_chats(projects: Path, app_root: Path) -> list[dict]:
     if app_root.is_dir():
         for f in app_root.glob("*/*/*.json"):
             try:
-                d = json.loads(f.read_text())
+                d = json.loads(f.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
                 continue
             stems = [s for s in [d.get("cliSessionId"), *(d.get("priorCliSessionIds") or [])] if s and s in files]

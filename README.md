@@ -29,7 +29,7 @@ Every new session starts blank, so you keep repeating the same things: reply in 
 - **No LLM, no guessing.** Judgment is always done by an LLM; there are no heuristic fallbacks. Without a key or at the cap, runs stop and say so.
 
 > [!NOTE]
-> **Supported today:** [Claude Code](https://claude.com/claude-code) as the assistant (its transcripts are the input, and the profile is imported through `CLAUDE.md`) and macOS as the platform (scheduling with a LaunchAgent, secrets in the Keychain). The design does not depend on either; other assistants and platforms are welcome additions.
+> **Supported today:** [Claude Code](https://claude.com/claude-code) as the assistant (its transcripts are the input, and the profile is imported through `CLAUDE.md`) macOS, Windows and Linux as the platform (scheduling with a LaunchAgent, a Task Scheduler task or a systemd user timer; the API key in the system keychain). The design does not depend on either; other assistants are a welcome addition.
 
 ## How it works
 
@@ -41,7 +41,7 @@ Once a day, `whoamai run` processes the conversations that have settled: it read
 
 ## Getting started
 
-**Requirements:** Python 3.13 or 3.14, [uv](https://docs.astral.sh/uv/) and an [Anthropic API key](https://console.anthropic.com/) for the LLM steps. Today the assistant is Claude Code and the platform is macOS (scheduling with a LaunchAgent, the key in the Keychain); on other systems you can run `whoamai run` yourself.
+**Requirements:** Python 3.13 or 3.14, [uv](https://docs.astral.sh/uv/) and an [Anthropic API key](https://console.anthropic.com/) for the LLM steps. Today the assistant is Claude Code, on macOS, Windows or Linux. On Linux the schedule needs systemd and the key needs a Secret Service (GNOME Keyring or KWallet); without them, run `whoamai run` yourself.
 
 Install it from PyPI:
 
@@ -57,7 +57,7 @@ whoamai key
 whoamai install
 ```
 
-`key` stores the API key in the Keychain (service `who-am-ai`). `install` schedules `whoamai run` once a day at 12:00 and makes Claude Code load the profile by adding `@~/.claude/me.md` to `~/.claude/CLAUDE.md`. To see the first result right away:
+`key` stores the API key in the system keychain (service `who-am-ai`): the macOS Keychain, the Windows Credential Manager or the Secret Service. `install` schedules `whoamai run` once a day at 12:00 and makes Claude Code load the profile by adding `@~/.claude/me.md` to `~/.claude/CLAUDE.md`. To see the first result right away:
 
 ```bash
 whoamai run
@@ -105,7 +105,7 @@ uv run python -m pytest -q
 
 ## Privacy and security
 
-who-am-ai reads your assistant transcripts (today, Claude Code's) locally and sends your messages, and the tail of the replies they react to, to the Anthropic API to annotate preferences. Nothing else leaves your machine. State is kept in `~/.who-am-ai/`, and the API key in the Keychain. See [SECURITY.md](https://github.com/caribeedu/who-am-ai/blob/main/SECURITY.md) to report a vulnerability and [CONTRIBUTING.md](https://github.com/caribeedu/who-am-ai/blob/main/CONTRIBUTING.md) to contribute.
+who-am-ai reads your assistant transcripts (today, Claude Code's) locally and sends your messages, and the tail of the replies they react to, to the Anthropic API to annotate preferences. Nothing else leaves your machine. State is kept in `~/.who-am-ai/`, and the API key in the system keychain. See [SECURITY.md](https://github.com/caribeedu/who-am-ai/blob/main/SECURITY.md) to report a vulnerability and [CONTRIBUTING.md](https://github.com/caribeedu/who-am-ai/blob/main/CONTRIBUTING.md) to contribute.
 
 ## License
 

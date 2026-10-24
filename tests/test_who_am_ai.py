@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from who_am_ai import cli
+from who_am_ai import cli, scheduler
 from who_am_ai.config import Config
 from who_am_ai.llm import LLMStopped
 from who_am_ai.pipeline import Runner, _lines
@@ -31,7 +31,8 @@ class FakeLLM:
 @pytest.fixture
 def env(tmp_path, monkeypatch):
     monkeypatch.setenv("WHO_AM_AI_HOME", str(tmp_path / "home"))
-    monkeypatch.setattr(cli, "AGENT", tmp_path / "LaunchAgents" / "local.who-am-ai.plist")
+    monkeypatch.setattr(scheduler, "LAUNCH_AGENT", tmp_path / "LaunchAgents" / "local.who-am-ai.plist")
+    monkeypatch.setattr(scheduler, "SYSTEMD_DIR", tmp_path / "systemd")
     cfg = Config(tmp_path / "home")
     for key, sub in (("projects_root", "projects"), ("app_sessions_root", "app"), ("profile_path", "claude/me.md"),
                      ("claude_md", "claude/CLAUDE.md")):
@@ -40,6 +41,15 @@ def env(tmp_path, monkeypatch):
     store = Store(cfg.root / "state.db")
     llm = FakeLLM(store)
     return cfg, store, llm, tmp_path
+
+
+def fake_scheduler_tools(monkeypatch, platform, returncode=0):
+    """Pretend to be `platform` and record the commands (launchctl, schtasks, systemctl) instead of running them."""
+    calls = []
+    monkeypatch.setattr(scheduler, "PLATFORM", platform)
+    monkeypatch.setattr(scheduler.subprocess, "run", lambda args, **kw: calls.append(args) or
+                        type("R", (), {"returncode": returncode, "stdout": "", "stderr": ""})())
+    return calls
 
 
 def line(kind, uid, text=None, content=None, ts="2026-10-01T10:00:00Z", **extra):
@@ -205,17 +215,16 @@ def test_changelog_records_added_changed_removed(env):
 
 def test_cli_config(env, capsys, monkeypatch):
     cfg, store, llm, tmp = env
-    calls = []
-    monkeypatch.setattr(cli.subprocess, "run", lambda args, **kw: calls.append(args) or type("R", (), {"returncode": 0})())
-    cli.AGENT.parent.mkdir(parents=True)
-    cli.AGENT.write_bytes(b"")  # scheduled: changing the time rewrites the agent
+    calls = fake_scheduler_tools(monkeypatch, "macos")
+    scheduler.LAUNCH_AGENT.parent.mkdir(parents=True)
+    scheduler.LAUNCH_AGENT.write_bytes(b"")  # scheduled: changing the time rewrites the agent
     cli.main(["config", "cap", "7.5"])
     cli.main(["config", "read-mode", "mine"])
     cli.main(["config", "time", "9:30"])
     c = Config()
     assert c["cap_usd"] == 7.5 and c["read_mode"] == "mine" and c["run_at"] == "09:30"
-    assert cli.plistlib.loads(cli.AGENT.read_bytes())["StartCalendarInterval"] == {"Hour": 9, "Minute": 30}
-    assert all(str(cli.AGENT) in a[-1] for a in calls), "launchctl only ever sees the test's own agent file"
+    assert scheduler.plistlib.loads(scheduler.LAUNCH_AGENT.read_bytes())["StartCalendarInterval"] == {"Hour": 9, "Minute": 30}
+    assert all(str(scheduler.LAUNCH_AGENT) in a[-1] for a in calls), "launchctl only ever sees the test's own agent file"
     with pytest.raises(SystemExit):
         cli.main(["config", "read-mode", "everything"])
     with pytest.raises(SystemExit):
@@ -243,3 +252,118 @@ def test_emptying_a_bullet_is_a_deletion_not_a_new_empty_rule(env):
     owner = [r["preference"] for r in store.q("SELECT preference FROM observations WHERE kind = 'owner'")]
     assert owner == ["Do not: Write everything in English."]
     assert "- \n" not in me.read_text() and "Write everything in English" not in me.read_text()
+
+
+def test_install_on_windows_creates_a_task_that_catches_up(env, monkeypatch):
+    cfg, store, llm, tmp = env
+    monkeypatch.setattr(scheduler, "PLATFORM", "windows")
+    seen = []
+
+    def run(args, **kw):
+        if "/XML" in args:  # the definition only exists while schtasks reads it
+            seen.append(Path(args[args.index("/XML") + 1]).read_text(encoding="utf-16"))
+        seen.append(args)
+        return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    monkeypatch.setattr(scheduler.subprocess, "run", run)
+    cfg.set("run_at", "09:30")
+    scheduler.install(cfg)
+    xml, create = seen
+    assert create[:4] == ["schtasks", "/Create", "/TN", "who-am-ai"]
+    assert "<StartBoundary>2026-01-01T09:30:00</StartBoundary>" in xml
+    assert "<StartWhenAvailable>true</StartWhenAvailable>" in xml
+    assert "who_am_ai.cli" in xml and "run.log" in xml and str(cfg.root) in xml
+    assert not (cfg.root / "task.xml").exists()
+
+
+def test_install_on_linux_writes_a_persistent_user_timer(env, monkeypatch):
+    cfg, store, llm, tmp = env
+    calls = fake_scheduler_tools(monkeypatch, "linux")
+    cfg.set("run_at", "07:05")
+    assert not scheduler.installed()
+    scheduler.install(cfg)
+    timer = (scheduler.SYSTEMD_DIR / "who-am-ai.timer").read_text(encoding="utf-8")
+    service = (scheduler.SYSTEMD_DIR / "who-am-ai.service").read_text(encoding="utf-8")
+    assert "OnCalendar=*-*-* 07:05:00" in timer and "Persistent=true" in timer
+    assert "who_am_ai.cli" in service and f"WHO_AM_AI_HOME={cfg.root}" in service
+    assert calls.index(["systemctl", "--user", "enable", "who-am-ai.timer"]) \
+        < calls.index(["systemctl", "--user", "restart", "who-am-ai.timer"]), "restart applies a new run time"
+    assert scheduler.installed()
+    scheduler.uninstall()
+    assert not scheduler.installed() and not (scheduler.SYSTEMD_DIR / "who-am-ai.service").exists()
+
+
+def test_scheduler_failure_is_reported(env, monkeypatch):
+    cfg, store, llm, tmp = env
+    fake_scheduler_tools(monkeypatch, "linux", returncode=1)
+    with pytest.raises(SystemExit, match="refused the schedule"):
+        scheduler.install(cfg)
+    assert not scheduler.installed(), "a failed install must not leave files that look scheduled"
+
+    def missing(args, **kw):
+        raise FileNotFoundError(args[0])
+
+    monkeypatch.setattr(scheduler.subprocess, "run", missing)
+    with pytest.raises(SystemExit, match="run `whoamai run` yourself"):
+        scheduler.install(cfg)
+    assert not scheduler.installed() and not list(scheduler.SYSTEMD_DIR.iterdir())
+
+
+def test_status_and_uninstall_survive_a_missing_scheduler_tool(env, monkeypatch):
+    cfg, store, llm, tmp = env
+    monkeypatch.setattr(scheduler, "PLATFORM", "windows")
+
+    def missing(args, **kw):
+        raise FileNotFoundError(args[0])
+
+    monkeypatch.setattr(scheduler.subprocess, "run", missing)
+    assert not scheduler.installed()
+    scheduler.uninstall()
+
+
+def test_systemd_units_escape_specifiers_and_variables(env, monkeypatch):
+    cfg, store, llm, tmp = env
+    cfg.root = tmp / "100%" / "a$b"
+    monkeypatch.setattr(scheduler.sys, "executable", "/opt/p$q/100%/python")
+    service, _ = scheduler.systemd_units(cfg)
+    lines = dict(l.split("=", 1) for l in service.splitlines() if "=" in l)
+    assert lines["ExecStart"].startswith('"/opt/p$$q/100%%/python"')
+    assert "100%%" in lines["Environment"] and "100%%" in lines["StandardOutput"]
+    assert "a$b" in lines["Environment"], "$ is only expanded in ExecStart"
+
+
+def test_install_keeps_the_line_endings_of_claude_md(env, monkeypatch):
+    cfg, store, llm, tmp = env
+    fake_scheduler_tools(monkeypatch, "linux")
+    claude_md = cfg.path("claude_md")
+    claude_md.parent.mkdir(parents=True, exist_ok=True)
+    claude_md.write_bytes(b"# Notes\r\n- Be brief.\r\n")
+    cli.main(["install"])
+    assert claude_md.read_bytes() == b"# Notes\r\n- Be brief.\r\n\r\n@~/.claude/me.md\r\n"
+    cli.main(["uninstall"])
+    assert claude_md.read_bytes() == b"# Notes\r\n- Be brief.\r\n"
+
+
+def test_cli_install_and_uninstall_manage_the_import_line(env, monkeypatch):
+    cfg, store, llm, tmp = env
+    fake_scheduler_tools(monkeypatch, "linux")
+    claude_md = cfg.path("claude_md")
+    claude_md.parent.mkdir(parents=True, exist_ok=True)
+    claude_md.write_text("# Notas\n- Responda em português.\n", encoding="utf-8")
+    cli.main(["install"])
+    cli.main(["install"])
+    assert claude_md.read_text(encoding="utf-8").splitlines().count(cli.IMPORT_LINE) == 1
+    cli.main(["uninstall"])
+    assert claude_md.read_text(encoding="utf-8") == "# Notas\n- Responda em português.\n"
+
+
+def test_profile_keeps_non_ascii_text_in_utf8(env):
+    """Windows defaults text files to a legacy code page; the profile must always be UTF-8."""
+    cfg, store, llm, tmp = env
+    llm.handlers.update(annotate=annotate_all,
+                        rewrite=lambda u: {"items": [{"section": "writing", "text": "Escreva 'ação' sem emojis.",
+                                                      "example": None, "keeps": None, "supported_by": ["O1"]}],
+                                           "summary": "added"})
+    write(tmp / "projects/-repo/s1.jsonl", line("user", "u1", "in english"))
+    Runner(cfg, store, llm).run()
+    assert "Escreva 'ação' sem emojis." in cfg.path("profile_path").read_bytes().decode("utf-8")

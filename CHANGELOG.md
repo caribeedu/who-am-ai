@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Runs on Windows and Linux as well as macOS. `whoamai install` schedules the daily run with a Task Scheduler task (Windows) or a systemd user timer (Linux), both catching up after sleep.
+- The Claude desktop app's session records are found in their per-platform folder.
+- Text files (the profile, `CLAUDE.md`, settings) are always read and written as UTF-8, and the console output too, so non-ASCII text no longer breaks on Windows.
+
 ## v1.0.0
 
 First release.

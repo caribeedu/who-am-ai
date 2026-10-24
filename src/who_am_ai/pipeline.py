@@ -203,7 +203,7 @@ class Runner:
         last = self.store.last_version()
         if last is None or not path.exists():
             return 0
-        current = path.read_text()
+        current = path.read_text(encoding="utf-8")
         if current == last:
             return 0
         old, new = _lines(last), _lines(current)
@@ -301,7 +301,7 @@ class Runner:
         content = "\n\n".join(blocks) + "\n"
         path = self.cfg.path("profile_path")
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content)
+        path.write_text(content, encoding="utf-8")
         self.store.x("INSERT INTO versions (written_at, content) VALUES (?, ?)", (now(), content))
         return content
 

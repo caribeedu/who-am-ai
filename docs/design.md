@@ -13,7 +13,7 @@ The design is independent of the assistant and of the platform; the current impl
 | | Supported | How |
 |---|---|---|
 | **Assistant** | Claude Code | Reads its transcripts (`~/.claude/projects`, and the desktop app's session records for chat titles). The profile is `~/.claude/me.md`, imported by `~/.claude/CLAUDE.md` with `@~/.claude/me.md`. |
-| **Platform** | macOS | A LaunchAgent runs `whoamai run` once a day; the API key is stored in the Keychain. On other systems you can run `whoamai run` yourself, and the key is stored with whatever backend `keyring` provides. |
+| **Platform** | macOS, Windows, Linux | `whoamai run` is scheduled once a day by a LaunchAgent (macOS), a Task Scheduler task (Windows) or a systemd user timer (Linux), and the API key is stored with the backend `keyring` provides: the Keychain, the Credential Manager or the Secret Service. Where there is no scheduler or keychain, you can run `whoamai run` yourself. The desktop app's session records are read from its per-platform folder (`~/Library/Application Support`, `%APPDATA%`, `~/.config`). |
 
 ![How who-am-ai works](../assets/how-it-works.svg)
 
@@ -32,9 +32,9 @@ The design is independent of the assistant and of the platform; the current impl
 
 ## Runtime
 
-- `whoamai run` is a one-shot command scheduled (on macOS, by a LaunchAgent) once a day at `run_at` (default 12:00). If the machine sleeps at that time, the run starts on wake; if it is off, that day is skipped and the next run reads everything since the last one. There is no daemon, no Docker and no web interface.
+- `whoamai run` is a one-shot command scheduled (by a LaunchAgent, a Task Scheduler task or a systemd timer) once a day at `run_at` (default 12:00). If the machine sleeps at that time, the run starts on wake (`StartWhenAvailable` on Windows, `Persistent=true` on Linux); if it is off, that day is skipped and the next run reads everything since the last one. There is no daemon, no Docker and no web interface.
 - State lives in `~/.who-am-ai/` (SQLite and `config.json`).
-- Claude is used through the Anthropic API. The key lives in the system keychain (macOS Keychain today).
+- Claude is used through the Anthropic API. The key lives in the system keychain.
 - A monthly spend cap (`cap_usd`, default 10) stops runs from calling the LLM, and says so in `whoamai log` and `whoamai status`. **There is no fallback without an LLM.**
 
 ## CLI
@@ -52,6 +52,6 @@ The design is independent of the assistant and of the platform; the current impl
 | `whoamai config models <annotate> <rewrite>` | Models per step. |
 | `whoamai config max-words 600` | Profile size cap. |
 | `whoamai config settle 5m` | How long a chat must be idle before it is processed. |
-| `whoamai install` / `uninstall` | The schedule (LaunchAgent) and the `@~/.claude/me.md` import line in `~/.claude/CLAUDE.md`. |
-| `whoamai key` | Store the Anthropic API key in the Keychain. |
+| `whoamai install` / `uninstall` | The schedule (LaunchAgent, Task Scheduler task or systemd timer) and the `@~/.claude/me.md` import line in `~/.claude/CLAUDE.md`. |
+| `whoamai key` | Store the Anthropic API key in the system keychain. |
 | `whoamai import <file.json>` | One-time import of preferences from elsewhere: a JSON list of `{preference, quote, chat, ts, kind?}`. |

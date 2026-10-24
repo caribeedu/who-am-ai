@@ -1,22 +1,18 @@
-"""whoamai: the command line. `run` is what the LaunchAgent calls; everything else is for the owner."""
+"""whoamai: the command line. `run` is what the scheduler calls; everything else is for the owner."""
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
-import plistlib
 import re
-import subprocess
 import sys
 from pathlib import Path
 
-from . import __version__
+from . import __version__, scheduler
 from .config import READ_MODES, Config
 from .pipeline import Runner
 from .store import Store, now
 
-AGENT = Path.home() / "Library/LaunchAgents/local.who-am-ai.plist"
 IMPORT_LINE = "@~/.claude/me.md"
 
 
@@ -59,7 +55,7 @@ def cmd_status(cfg: Config, args) -> None:
           f" ({s.one('SELECT count(*) AS n FROM observations WHERE consumed = 0')['n']} pending)")
     print(f"profile items: {s.one('SELECT count(*) AS n FROM items WHERE active = 1')['n']}")
     print(f"files tracked: {s.one('SELECT count(*) AS n FROM files')['n']}")
-    print(f"scheduled:     {'yes, daily at ' + cfg['run_at'] if AGENT.exists() else 'no (whoamai install)'}")
+    print(f"scheduled:     {'yes, daily at ' + cfg['run_at'] if scheduler.installed() else 'no (whoamai install)'}")
     print(f"read mode:     {cfg['read_mode']}")
 
 
@@ -81,8 +77,8 @@ def cmd_config(cfg: Config, args) -> None:
         return
     if key == "time":
         cfg.set("run_at", parse_time(values[0]))
-        if AGENT.exists():
-            install_agent(cfg)
+        if scheduler.installed():
+            scheduler.install(cfg)
     elif key == "cap":
         cfg.set("cap_usd", float(values[0]))
     elif key == "read-mode":
@@ -104,48 +100,41 @@ def cmd_config(cfg: Config, args) -> None:
     print("saved")
 
 
-def _uid() -> int:
-    """launchd domain of the current user (the scheduler is macOS-only; elsewhere run `whoamai run` yourself)."""
-    return os.getuid() if hasattr(os, "getuid") else 0
+def _read_keeping_newlines(path: Path) -> str:
+    """CLAUDE.md is the owner's file: its line endings (LF or CRLF) are not ours to change."""
+    if not path.exists():
+        return ""
+    with open(path, encoding="utf-8", newline="") as f:
+        return f.read()
 
 
-def install_agent(cfg: Config) -> None:
-    uid = _uid()
-    if AGENT.exists():
-        subprocess.run(["launchctl", "bootout", f"gui/{uid}", str(AGENT)], capture_output=True)
-    AGENT.parent.mkdir(parents=True, exist_ok=True)
-    AGENT.write_bytes(plistlib.dumps({
-        "Label": "local.who-am-ai",
-        "ProgramArguments": [sys.executable, "-m", "who_am_ai.cli", "run"],
-        "StartCalendarInterval": {"Hour": int(cfg["run_at"][:2]), "Minute": int(cfg["run_at"][3:])},
-        "RunAtLoad": False,
-        "StandardOutPath": str(cfg.root / "run.log"),
-        "StandardErrorPath": str(cfg.root / "run.log"),
-        "EnvironmentVariables": {"WHO_AM_AI_HOME": str(cfg.root)},
-    }))
-    r = subprocess.run(["launchctl", "bootstrap", f"gui/{uid}", str(AGENT)], capture_output=True, text=True)
-    if r.returncode != 0:
-        raise SystemExit(f"launchctl refused the agent: {r.stderr.strip()}")
+def _write_keeping_newlines(path: Path, text: str) -> None:
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(text)
+
+
+def _newline_of(text: str) -> str:
+    return "\r\n" if "\r\n" in text else "\n"
 
 
 def cmd_install(cfg: Config, args) -> None:
-    install_agent(cfg)
+    scheduler.install(cfg)
     claude_md = cfg.path("claude_md")
-    text = claude_md.read_text() if claude_md.exists() else ""
+    text = _read_keeping_newlines(claude_md)
     if IMPORT_LINE not in text.splitlines():
+        eol = _newline_of(text)
         claude_md.parent.mkdir(parents=True, exist_ok=True)
-        claude_md.write_text(text.rstrip() + ("\n\n" if text.strip() else "") + IMPORT_LINE + "\n")
+        _write_keeping_newlines(claude_md, text.rstrip() + (eol * 2 if text.strip() else "") + IMPORT_LINE + eol)
     print(f"scheduled daily at {cfg['run_at']}; {claude_md} imports {IMPORT_LINE}")
 
 
 def cmd_uninstall(cfg: Config, args) -> None:
-    if AGENT.exists():
-        subprocess.run(["launchctl", "bootout", f"gui/{_uid()}", str(AGENT)], capture_output=True)
-        AGENT.unlink()
+    scheduler.uninstall()
     claude_md = cfg.path("claude_md")
     if claude_md.exists():
-        lines = [line for line in claude_md.read_text().splitlines() if line.strip() != IMPORT_LINE]
-        claude_md.write_text("\n".join(lines).rstrip() + "\n")
+        text = _read_keeping_newlines(claude_md)
+        kept = [line for line in text.splitlines(keepends=True) if line.strip() != IMPORT_LINE]
+        _write_keeping_newlines(claude_md, "".join(kept).rstrip() + _newline_of(text))
     print("unscheduled; import line removed (me.md and the history are kept)")
 
 
@@ -153,7 +142,7 @@ def cmd_import(cfg: Config, args) -> None:
     """One-time import: JSON list of {preference, quote, chat, ts, kind?}. `kind` is "imported" (default) or "owner"
     for preferences the owner stated themselves elsewhere (they keep the owner's authority)."""
     s = _open(cfg)
-    items = json.loads(Path(args.file).read_text())
+    items = json.loads(Path(args.file).read_text(encoding="utf-8"))
     for it in items:
         kind = it.get("kind") or "imported"
         if kind not in ("imported", "owner"):
@@ -163,7 +152,8 @@ def cmd_import(cfg: Config, args) -> None:
 
 
 def cmd_key(cfg: Config, args) -> None:
-    """Stores the Anthropic API key in this tool's Keychain item (service "who-am-ai"). Typed without echo."""
+    """Stores the Anthropic API key in the system keychain (service "who-am-ai"): the macOS Keychain, the Windows
+    Credential Manager or the Secret Service. Typed without echo."""
     import getpass
 
     import keyring
@@ -171,7 +161,7 @@ def cmd_key(cfg: Config, args) -> None:
     if not value:
         raise SystemExit("no key given")
     keyring.set_password("who-am-ai", "anthropic_api_key", value)
-    print('saved in the Keychain as service "who-am-ai"')
+    print('saved in the system keychain as service "who-am-ai"')
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -188,12 +178,15 @@ def main(argv: list[str] | None = None) -> None:
     c.add_argument("key", nargs="?")
     c.add_argument("values", nargs="*")
     c.set_defaults(fn=cmd_config)
-    k = sub.add_parser("key", help="store the Anthropic API key in this tool's own Keychain item")
+    k = sub.add_parser("key", help="store the Anthropic API key in the system keychain")
     k.set_defaults(fn=cmd_key)
     im = sub.add_parser("import")
     im.add_argument("file")
     im.set_defaults(fn=cmd_import)
     args = p.parse_args(argv)
+    for stream in (sys.stdout, sys.stderr):  # the Windows console defaults to a legacy code page
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     args.fn(Config(), args)
 
 
