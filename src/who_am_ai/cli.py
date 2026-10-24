@@ -100,13 +100,31 @@ def cmd_config(cfg: Config, args) -> None:
     print("saved")
 
 
+def _read_keeping_newlines(path: Path) -> str:
+    """CLAUDE.md is the owner's file: its line endings (LF or CRLF) are not ours to change."""
+    if not path.exists():
+        return ""
+    with open(path, encoding="utf-8", newline="") as f:
+        return f.read()
+
+
+def _write_keeping_newlines(path: Path, text: str) -> None:
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(text)
+
+
+def _newline_of(text: str) -> str:
+    return "\r\n" if "\r\n" in text else "\n"
+
+
 def cmd_install(cfg: Config, args) -> None:
     scheduler.install(cfg)
     claude_md = cfg.path("claude_md")
-    text = claude_md.read_text(encoding="utf-8") if claude_md.exists() else ""
+    text = _read_keeping_newlines(claude_md)
     if IMPORT_LINE not in text.splitlines():
+        eol = _newline_of(text)
         claude_md.parent.mkdir(parents=True, exist_ok=True)
-        claude_md.write_text(text.rstrip() + ("\n\n" if text.strip() else "") + IMPORT_LINE + "\n", encoding="utf-8")
+        _write_keeping_newlines(claude_md, text.rstrip() + (eol * 2 if text.strip() else "") + IMPORT_LINE + eol)
     print(f"scheduled daily at {cfg['run_at']}; {claude_md} imports {IMPORT_LINE}")
 
 
@@ -114,8 +132,9 @@ def cmd_uninstall(cfg: Config, args) -> None:
     scheduler.uninstall()
     claude_md = cfg.path("claude_md")
     if claude_md.exists():
-        lines = [line for line in claude_md.read_text(encoding="utf-8").splitlines() if line.strip() != IMPORT_LINE]
-        claude_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        text = _read_keeping_newlines(claude_md)
+        kept = [line for line in text.splitlines(keepends=True) if line.strip() != IMPORT_LINE]
+        _write_keeping_newlines(claude_md, "".join(kept).rstrip() + _newline_of(text))
     print("unscheduled; import line removed (me.md and the history are kept)")
 
 

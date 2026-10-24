@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import os
 import plistlib
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -21,9 +20,14 @@ PLATFORM = "macos" if sys.platform == "darwin" else "windows" if sys.platform.st
 
 
 def _run(args: list[str], check: bool = True) -> subprocess.CompletedProcess:
+    """Runs a scheduler tool. With `check`, a missing tool or a refusal stops with a message; without it, a
+    missing tool is just a failed command (exit code 127), so queries and clean-ups never abort."""
     try:
-        r = subprocess.run(args, capture_output=True, text=True)
+        # errors="replace": schtasks answers in the OEM code page, which the locale may not decode.
+        r = subprocess.run(args, capture_output=True, text=True, errors="replace")
     except FileNotFoundError:
+        if not check:
+            return subprocess.CompletedProcess(args, 127, "", f"{args[0]} not found")
         raise SystemExit(f"{args[0]} not found; run `whoamai run` yourself instead") from None
     if check and r.returncode != 0:
         raise SystemExit(f"{args[0]} refused the schedule: {(r.stderr or r.stdout).strip()}")
@@ -131,14 +135,16 @@ def _uninstall_schtasks() -> None:
 
 def systemd_units(cfg: Config) -> tuple[str, str]:
     """(service, timer). `Persistent=true` runs a missed activation as soon as the machine is up again."""
-    exec_start = " ".join(f'"{a}"' for a in _command())
-    log = cfg.root / "run.log"
+    # systemd expands %specifiers in every value, and $VARIABLES in ExecStart; a path may contain either.
+    exec_start = " ".join(f'"{_specifiers(a).replace("$", "$$")}"' for a in _command())
+    home = _specifiers(str(cfg.root))
+    log = _specifiers(str(cfg.root / "run.log"))
     service = f"""[Unit]
 Description=who-am-ai: learn preferences from your assistant chats
 
 [Service]
 Type=oneshot
-Environment="WHO_AM_AI_HOME={cfg.root}"
+Environment="WHO_AM_AI_HOME={home}"
 ExecStart={exec_start}
 StandardOutput=append:{log}
 StandardError=append:{log}
@@ -156,19 +162,32 @@ WantedBy=timers.target
     return service, timer
 
 
+def _specifiers(value: str) -> str:
+    return value.replace("%", "%%")
+
+
 def _install_systemd(cfg: Config) -> None:
     service, timer = systemd_units(cfg)
     SYSTEMD_DIR.mkdir(parents=True, exist_ok=True)
     (SYSTEMD_DIR / f"{TASK}.service").write_text(service, encoding="utf-8")
     (SYSTEMD_DIR / f"{TASK}.timer").write_text(timer, encoding="utf-8")
-    _run(["systemctl", "--user", "daemon-reload"])
-    _run(["systemctl", "--user", "enable", "--now", f"{TASK}.timer"])
+    try:
+        _run(["systemctl", "--user", "daemon-reload"])
+        _run(["systemctl", "--user", "enable", f"{TASK}.timer"])
+        # `restart` (not `enable --now`) so that a timer that is already active picks up a new run time.
+        _run(["systemctl", "--user", "restart", f"{TASK}.timer"])
+    except SystemExit:
+        _remove_systemd_files()  # no systemctl or no user session: do not leave files that look scheduled
+        raise
+
+
+def _remove_systemd_files() -> None:
+    for suffix in ("timer", "service"):
+        (SYSTEMD_DIR / f"{TASK}.{suffix}").unlink(missing_ok=True)
 
 
 def _uninstall_systemd() -> None:
     if installed():
         _run(["systemctl", "--user", "disable", "--now", f"{TASK}.timer"], check=False)
-    for suffix in ("timer", "service"):
-        (SYSTEMD_DIR / f"{TASK}.{suffix}").unlink(missing_ok=True)
-    if shutil.which("systemctl"):
-        _run(["systemctl", "--user", "daemon-reload"], check=False)
+    _remove_systemd_files()
+    _run(["systemctl", "--user", "daemon-reload"], check=False)

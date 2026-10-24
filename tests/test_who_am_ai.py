@@ -286,7 +286,8 @@ def test_install_on_linux_writes_a_persistent_user_timer(env, monkeypatch):
     service = (scheduler.SYSTEMD_DIR / "who-am-ai.service").read_text(encoding="utf-8")
     assert "OnCalendar=*-*-* 07:05:00" in timer and "Persistent=true" in timer
     assert "who_am_ai.cli" in service and f"WHO_AM_AI_HOME={cfg.root}" in service
-    assert ["systemctl", "--user", "enable", "--now", "who-am-ai.timer"] in calls
+    assert calls.index(["systemctl", "--user", "enable", "who-am-ai.timer"]) \
+        < calls.index(["systemctl", "--user", "restart", "who-am-ai.timer"]), "restart applies a new run time"
     assert scheduler.installed()
     scheduler.uninstall()
     assert not scheduler.installed() and not (scheduler.SYSTEMD_DIR / "who-am-ai.service").exists()
@@ -297,6 +298,7 @@ def test_scheduler_failure_is_reported(env, monkeypatch):
     fake_scheduler_tools(monkeypatch, "linux", returncode=1)
     with pytest.raises(SystemExit, match="refused the schedule"):
         scheduler.install(cfg)
+    assert not scheduler.installed(), "a failed install must not leave files that look scheduled"
 
     def missing(args, **kw):
         raise FileNotFoundError(args[0])
@@ -304,6 +306,42 @@ def test_scheduler_failure_is_reported(env, monkeypatch):
     monkeypatch.setattr(scheduler.subprocess, "run", missing)
     with pytest.raises(SystemExit, match="run `whoamai run` yourself"):
         scheduler.install(cfg)
+    assert not scheduler.installed() and not list(scheduler.SYSTEMD_DIR.iterdir())
+
+
+def test_status_and_uninstall_survive_a_missing_scheduler_tool(env, monkeypatch):
+    cfg, store, llm, tmp = env
+    monkeypatch.setattr(scheduler, "PLATFORM", "windows")
+
+    def missing(args, **kw):
+        raise FileNotFoundError(args[0])
+
+    monkeypatch.setattr(scheduler.subprocess, "run", missing)
+    assert not scheduler.installed()
+    scheduler.uninstall()
+
+
+def test_systemd_units_escape_specifiers_and_variables(env, monkeypatch):
+    cfg, store, llm, tmp = env
+    cfg.root = tmp / "100%" / "a$b"
+    monkeypatch.setattr(scheduler.sys, "executable", "/opt/p$q/100%/python")
+    service, _ = scheduler.systemd_units(cfg)
+    lines = dict(l.split("=", 1) for l in service.splitlines() if "=" in l)
+    assert lines["ExecStart"].startswith('"/opt/p$$q/100%%/python"')
+    assert "100%%" in lines["Environment"] and "100%%" in lines["StandardOutput"]
+    assert "a$b" in lines["Environment"], "$ is only expanded in ExecStart"
+
+
+def test_install_keeps_the_line_endings_of_claude_md(env, monkeypatch):
+    cfg, store, llm, tmp = env
+    fake_scheduler_tools(monkeypatch, "linux")
+    claude_md = cfg.path("claude_md")
+    claude_md.parent.mkdir(parents=True, exist_ok=True)
+    claude_md.write_bytes(b"# Notes\r\n- Be brief.\r\n")
+    cli.main(["install"])
+    assert claude_md.read_bytes() == b"# Notes\r\n- Be brief.\r\n\r\n@~/.claude/me.md\r\n"
+    cli.main(["uninstall"])
+    assert claude_md.read_bytes() == b"# Notes\r\n- Be brief.\r\n"
 
 
 def test_cli_install_and_uninstall_manage_the_import_line(env, monkeypatch):
