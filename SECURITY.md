@@ -12,5 +12,5 @@ Include what you found, how to reproduce it and the impact you expect. You will 
 
 - Everything runs locally as a one-shot command. There is no server and nothing listens on a port.
 - The only data that leaves the machine are your messages, and the tail of the assistant replies they react to, sent to the Anthropic API to annotate preferences. Pasted material is replaced by a marker before anything is sent.
-- The API key is stored in the system keychain (the macOS Keychain today), never in files or in the state database.
+- The API key is stored in the system keychain (the macOS Keychain, the Windows Credential Manager or the Linux Secret Service), never in files or in the state database.
 - State (`~/.who-am-ai/`) holds your messages' literal quotes as evidence. Treat it like your transcripts.
